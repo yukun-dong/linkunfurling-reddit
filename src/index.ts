@@ -48,7 +48,11 @@ const onTurnErrorHandler = async (context: TurnContext, error: Error) => {
 adapter.onTurnError = onTurnErrorHandler;
 
 // Create the bot that will handle user pasted links.
-const linkUnfurlingApp = new LinkUnfurlingApp();
+const redditOptions = {
+  redditAppId: config.redditId,
+  redditAppPassword: config.redditPassword,
+};
+const linkUnfurlingApp = new LinkUnfurlingApp(redditOptions);
 
 // Create HTTP server.
 const server = restify.createServer();
