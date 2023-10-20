@@ -1,50 +1,217 @@
-# Overview of the Link Unfurling app template
+### 1. create a reddit app
 
-This template showcases an app that unfurls a link into an adaptive card when URLs with a particular domain are pasted into the compose message area in Microsoft Teams or email body in Outlook.
+go to https://www.reddit.com/prefs/apps/ and register a new app for Reddit using the following parameters.
 
-![hero-image](https://aka.ms/teamsfx-link-unfurling-hero-image)
+| Parameter        | Value                      |
+|------------------|:---------------------------|
+| Type       | `web app`                  |
+| redirect uri | your redirect uri          |
+| description      | Your own description       |
+| about Url        | Url to your own about page |
 
-## Get Started with the Link Unfurling app
+save client id and secret for future use.
 
-> **Prerequisites**
->
-> - [Node.js](https://nodejs.org/), supported versions: 16, 18
-> - A Microsoft 365 account. If you do not have Microsoft 365 account, apply one from [Microsoft 365 developer program](https://developer.microsoft.com/microsoft-365/dev-program)
-> - [Teams Toolkit Visual Studio Code Extension](https://aka.ms/teams-toolkit) version 5.0.0 and higher or [TeamsFx CLI](https://aka.ms/teamsfx-cli)
+![reddit](reddit.png)
 
-1. First, select the Teams Toolkit icon on the left in the VS Code toolbar.
-2. In the Account section, sign in with your [Microsoft 365 account](https://docs.microsoft.com/microsoftteams/platform/toolkit/accounts) if you haven't already.
-3. Press F5 to start debugging which launches your app in Teams or Outlook using a web browser by select a target Microsoft application: `Debug in Teams`, `Debug in Outlook` and click the `Run and Debug` green arrow button.
-4. When Teams or Outlook launches in the browser, select the Add button in the dialog to install your app to Teams.
-5. Paste a link ending with `.botframework.com` into compose message area in Teams or email body in Outlook. You should see an adaptive card unfurled.
+### 2. update manifest
 
-## What's included in the template
+update link unfurling domain to 
+```json
+  "domains": [
+     "www.reddit.com",
+      "reddit.com"
+  ],
+```
 
-| Folder / File | Contents |
-| - | - |
-| `teamsapp.yml` | Main project file describes your application configuration and defines the set of actions to run in each lifecycle stages |
-| `teamsapp.local.yml`| This overrides `teamsapp.yml` with actions that enable local execution and debugging |
-| `.vscode/` | VSCode files for local debug |
-| `src/` | The source code for the link unfurling application |
-| `appPackage/` | Templates for the Teams application manifest |
-| `infra/` | Templates for provisioning Azure resources |
+### 3. install package
 
-The following files can be customized and demonstrate an example implementation to get you started.
+npm install adaptivecards-templating
 
-| File | Contents |
-| - | - |
-| `src/index.ts` | Application entry point and `restify` handlers |
-| `src/linkUnfurlingApp.ts`| The teams activity handler |
-| `src/adaptiveCards/helloWorldCard.json` | The adaptive card |
+npm install axios
 
-## Extend this template
+### 4. update env variables
 
-This section introduces how to customize or extend this template, including:
+- add reddit id and secret into .env.local and .env.local.user file:
+  ```
+  REDDIT_ID=<your reddit id>
+  ```
+  ```
+  SECRET_REDDIT_PASSWORD=<your reddit secret>
+  ```
 
-- [How to use Zero Install Link Unfurling in Teams](https://aka.ms/teamsfx-extend-link-unfurling#how-to-use-zero-install-link-unfurling-in-teams)
-- [How to add link unfurling cache in Teams](https://aka.ms/teamsfx-extend-link-unfurling#how-to-add-link-unfurling-cache-in-teams)
-- [How to customize Zero Install Link Unfurling's adaptive cards](https://aka.ms/teamsfx-extend-link-unfurling#how-to-customize-zero-install-link-unfurlings-adaptive-cards)
-- [How to add stage view](https://aka.ms/teamsfx-extend-link-unfurling#how-to-add-stage-view)
-- [How to add task module (Teams)](https://aka.ms/teamsfx-extend-link-unfurling#how-to-add-task-module-teams)
-- [How to add adaptive card action (Teams)](https://aka.ms/teamsfx-extend-link-unfurling#how-to-add-adaptive-card-action-teams)
-- [How to extend this template with Notification, Command and Workflow bot](https://aka.ms/teamsfx-extend-link-unfurling#how-to-extend-this-template-with-notification-command-and-workflow-bot)
+
+### 5. update code
+Add following code:
+- src/redditApi/RedditAppAuthenticator.ts: the class to get Reddit api token
+```ts
+import axios from "axios";
+import redditOptions from "./RedditOptions";
+
+export class RedditAppAuthenticator  {
+  private static readonly CacheKey = 'RedditAppToken';
+  private readonly redditAppId: string;
+  private readonly redditAppPassword: string;
+  private cache: TokenCache;
+
+  constructor() {
+    this.redditAppId = redditOptions.redditAppId;
+    this.redditAppPassword = redditOptions.redditAppPassword;
+    this.cache = new TokenCache();
+  }
+
+  public async getAccessToken(): Promise<string> {
+    let accessToken = await this.cache.get(RedditAppAuthenticator.CacheKey);
+    if (!accessToken) {
+      const request = {
+        method: 'POST',
+        url: 'https://www.reddit.com/api/v1/access_token',
+        data: new URLSearchParams({
+          grant_type: 'client_credentials',
+          scope: 'read',
+        }),
+      };
+      
+      const response = await axios.post(request.url, request.data, {auth: {username: this.redditAppId, password: this.redditAppPassword}});
+      accessToken = response.data.access_token;
+      this.cache.setWithTimeout(RedditAppAuthenticator.CacheKey, accessToken, 43200000); // Duration is 24hr, store in cache for half-life.
+    }
+
+    return accessToken;
+  }
+}
+class TokenCache {
+  private readonly cache: Map<string, { value: any; timeout: NodeJS.Timeout }> = new Map();
+
+  public setWithTimeout(key: string, value: any, timeout: number): void {
+    if (this.cache.has(key)) {
+      clearTimeout(this.cache.get(key).timeout);
+    }
+
+    const timeoutId = setTimeout(() => {
+      this.cache.delete(key);
+    }, timeout);
+
+    this.cache.set(key, { value, timeout: timeoutId });
+  }
+
+  public get(key: string): any {
+    const cachedValue = this.cache.get(key);
+    if (cachedValue) {
+      return cachedValue.value;
+    }
+
+    return undefined;
+  }
+
+  public delete(key: string): void {
+    if (this.cache.has(key)) {
+      clearTimeout(this.cache.get(key).timeout);
+      this.cache.delete(key);
+    }
+  }
+}
+```
+- src/redditApi/RedditHttpClient.ts: the class to call Reddit api 
+```ts
+import axios from "axios";
+import { RedditAppAuthenticator } from "./RedditAppAuthenticator";
+
+export class RedditHttpClient {
+  private parameterExtractor = /https?:\/\/\w*\.?reddit\.com\/r\/(?<subreddit>\w+)\/comments\/(?<id>\w+)/;
+  private redditAuthenticator: RedditAppAuthenticator;
+
+  public constructor() {
+    this.redditAuthenticator = new RedditAppAuthenticator();
+  }
+  public async GetLink(url: string) {
+    const match = this.parameterExtractor.exec(url);
+    if (match) {
+      const { subreddit, id } = match.groups;
+      const model = await this.GetLinkModel(subreddit, id);
+      return model;
+    }
+  }
+
+  private async GetLinkModel(subreddit: string, id: string) {
+    const authToken = await this.redditAuthenticator.getAccessToken();
+    const response = await axios.get(`https://oauth.reddit.com/r/${subreddit}/api/info?id=t3_${id}`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+    const firstPost = response.data.data.children[0].data;
+    const model = {
+      title: firstPost.title,
+      id: firstPost.id,
+      score: firstPost.score,
+      subreddit: firstPost.subreddit,
+      thumbnail: firstPost.preview?.images[0]?.source.url.replace(/&amp;/g, '&'),
+      selfText: firstPost.selftext,
+      numComments: firstPost.num_comments,
+      link: "https://www.reddit.com" + firstPost.permalink,
+      author: firstPost.author,
+      created: new Date(firstPost.created_utc * 1000).toISOString(),
+    }
+
+    return model;
+  }
+
+}
+
+```
+- srcredditApi/RedditOptions.ts: define reddit id and password
+```ts
+const redditOptions = {
+  redditAppId: process.env.REDDIT_ID,
+  redditAppPassword: process.env.REDDIT_PASSWORD,
+};
+
+export default redditOptions;
+
+```
+
+Update following code:
+- src/linkUnfurlingApp.ts:
+```ts
+import * as ACData from "adaptivecards-templating";
+  public async handleTeamsAppBasedLinkQuery(
+    context: TurnContext,
+    query: AppBasedLinkQuery
+  ): Promise<MessagingExtensionResponse> {
+    // When the returned card is an adaptive card, the previewCard property of the attachment is required.
+    const post = await this.redditClient.GetLink(query.url);
+    const template = new ACData.Template(helloWorldCard);
+    const adaptiveCard = template.expand({
+      $root: {
+        post: post,
+      }
+    });
+
+    const previewCard = CardFactory.heroCard(post.title, post.subreddit, [post.thumbnail]);
+
+    const attachment = { ...CardFactory.adaptiveCard(adaptiveCard), preview: previewCard };
+
+    return {
+      composeExtension: {
+        type: "result",
+        attachmentLayout: "list",
+        attachments: [attachment],
+        suggestedActions: {
+          actions: [
+            {
+              title: "default",
+              type: "setCachePolicy",
+              value: '{"type":"no-cache"}',
+            },
+          ],
+        },
+      },
+    };
+  }
+  ```
+
+
+### 6. local debug
+
+hit F5 to start local debug, past a reddit link into chatbox and see the unfurled card
+![link](link.png)

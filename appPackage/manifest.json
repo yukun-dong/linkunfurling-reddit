@@ -52,7 +52,8 @@
                     "type": "link",
                     "value": {
                         "domains": [
-                            "*.botframework.com"
+                            "www.reddit.com",
+                            "reddit.com"
                         ],
                         "supportsAnonymizedPayloads": true
                     }
