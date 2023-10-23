@@ -1,4 +1,6 @@
-export interface RedditOptions{
-  redditAppId: string;
-  redditAppPassword: string;
-}
+const redditOptions = {
+  redditAppId: process.env.REDDIT_ID,
+  redditAppPassword: process.env.REDDIT_PASSWORD,
+};
+
+export default redditOptions;

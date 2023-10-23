@@ -52,7 +52,7 @@ const redditOptions = {
   redditAppId: config.redditId,
   redditAppPassword: config.redditPassword,
 };
-const linkUnfurlingApp = new LinkUnfurlingApp(redditOptions);
+const linkUnfurlingApp = new LinkUnfurlingApp();
 
 // Create HTTP server.
 const server = restify.createServer();

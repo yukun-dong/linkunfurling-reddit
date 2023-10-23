@@ -8,14 +8,13 @@ import {
 import helloWorldCard from "./adaptiveCards/helloWorldCard.json";
 import { RedditHttpClient } from "./redditApi/RedditHttpClient";
 import * as ACData from "adaptivecards-templating";
-import { RedditOptions } from "./redditApi/RedditOptions";
 
 export class LinkUnfurlingApp extends TeamsActivityHandler {
   private redditClient: RedditHttpClient;
 
-  constructor(options: RedditOptions) {
+  constructor() {
     super();
-    this.redditClient = new RedditHttpClient(options);
+    this.redditClient = new RedditHttpClient();
   }
   // Link Unfurling.
   // This function can be triggered after this app is installed.
@@ -54,118 +53,6 @@ export class LinkUnfurlingApp extends TeamsActivityHandler {
     };
   }
 
-  private RenderAdaptiveCard(post) {
-    const titleBlock = {
-      type: "TextBlock",
-      text: `[${post.title}](${post.link})`,
-      size: `Large`,
-      wrap: true,
-      maxLines: 2,
-    };
-
-    const upvoteColumn = {
-      type: `Column`,
-      width: `Auto`,
-      items: [
-        {
-          type: "TextBlock",
-          text: `↑ ${post.score}`,
-        },
-      ],
-    };
-
-    const commentColumn = {
-      type: `Column`,
-      width: `Auto`,
-      items: [{
-        type: "TextBlock",
-        text: `🗨️ [${post.numComments}](https://www.reddit.com/r/${post.subreddit}/comments/${post.id})`,
-      },
-      ],
-    };
-
-    const subredditColumn = {
-      type: `Column`,
-      width: `Stretch`,
-      items: [{
-        type: "TextBlock",
-        text: `/r/${post.subreddit}`,
-        horizontalAlignment: `Right`,
-        size: `Default`,
-        weight: `Bolder`,
-      },
-      ],
-    };
-
-    const infoColumns = {
-      type: `ColumnSet`,
-      columns: [upvoteColumn, commentColumn, subredditColumn],
-    };
-
-    let preview;
-    if (post.thumbnail != null) {
-      preview = {
-        type: `Image`,
-        url: new URL(post.thumbnail),
-        horizontalAlignment: `Center`,
-        separator: true,
-      };
-    } else {
-      preview = {
-        type: `TextBlock`,
-        text: post.selfText ?? 'Preview Not Available',
-        wrap: true,
-        separator: true,
-      };
-    }
-
-    const bottomLeftColumn = {
-      type: "Column",
-      width: `Auto`,
-      items: [{
-        type: "TextBlock",
-        text: `Posted by [/u/${post.author}](https://www.reddit.com/u/${post.author})`,
-        size: `Small`,
-        weight: `Lighter`,
-      },
-      ],
-    };
-
-    const createdText = `{{DATE(${post.created.toISOString()})}}`;
-    const bottomRightColumn =
-
-    {
-      type: "Column",
-      width: `Stretch`,
-      items: [{
-        type: "TextBlock",
-        text: createdText,
-        horizontalAlignment: `Right`,
-        size: `Small`,
-        weight: `Lighter`,
-      },
-      ],
-    };
-
-    const bottomColumns = {
-      type: "ColumnSet",
-      columns: [bottomLeftColumn, bottomRightColumn],
-    };
-
-    const card = {
-      version: '1.6',
-      $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
-      body: [titleBlock, infoColumns, preview, bottomColumns],
-      actions: [{
-        type: "Action.OpenUrl",
-        title: 'Open in Reddit',
-        url: post.link,
-      },
-      ],
-    };
-
-    return card;
-  }
 
   // Zero Install Link Unfurling
   // This function can be triggered if this app sets "supportsAnonymizedPayloads": true in manifest and is uploaded to org's app catalog.

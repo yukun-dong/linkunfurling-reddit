@@ -1,16 +1,14 @@
 import axios from "axios";
 import { RedditAppAuthenticator } from "./RedditAppAuthenticator";
-import { RedditOptions } from "./RedditOptions";
-import { RedditLinkModel } from "./RedditLinkModel";
 
 export class RedditHttpClient {
   private parameterExtractor = /https?:\/\/\w*\.?reddit\.com\/r\/(?<subreddit>\w+)\/comments\/(?<id>\w+)/;
   private redditAuthenticator: RedditAppAuthenticator;
 
-  public constructor(options: RedditOptions) {
-    this.redditAuthenticator = new RedditAppAuthenticator(options);
+  public constructor() {
+    this.redditAuthenticator = new RedditAppAuthenticator();
   }
-  public async GetLink(url: string): Promise<RedditLinkModel>{
+  public async GetLink(url: string) {
     const match = this.parameterExtractor.exec(url);
     if (match) {
       const { subreddit, id } = match.groups;
@@ -19,7 +17,7 @@ export class RedditHttpClient {
     }
   }
 
-  private async GetLinkModel(subreddit: string, id: string): Promise<RedditLinkModel>{
+  private async GetLinkModel(subreddit: string, id: string) {
     const authToken = await this.redditAuthenticator.getAccessToken();
     const response = await axios.get(`https://oauth.reddit.com/r/${subreddit}/api/info?id=t3_${id}`, {
       headers: {

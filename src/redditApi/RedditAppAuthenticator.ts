@@ -1,6 +1,5 @@
 import axios from "axios";
-import { TokenCache } from "./TokenCache";
-import { RedditOptions } from "./RedditOptions";
+import redditOptions from "./RedditOptions";
 
 export class RedditAppAuthenticator  {
   private static readonly CacheKey = 'RedditAppToken';
@@ -8,12 +7,9 @@ export class RedditAppAuthenticator  {
   private readonly redditAppPassword: string;
   private cache: TokenCache;
 
-  constructor(options: RedditOptions) {
-    if (!options) {
-      throw new Error('options cannot be null or undefined.');
-    }
-    this.redditAppId = options.redditAppId;
-    this.redditAppPassword = options.redditAppPassword;
+  constructor() {
+    this.redditAppId = redditOptions.redditAppId;
+    this.redditAppPassword = redditOptions.redditAppPassword;
     this.cache = new TokenCache();
   }
 
@@ -31,10 +27,41 @@ export class RedditAppAuthenticator  {
       
       const response = await axios.post(request.url, request.data, {auth: {username: this.redditAppId, password: this.redditAppPassword}});
       accessToken = response.data.access_token;
-      this.cache.setWithTimeout(RedditAppAuthenticator.CacheKey, accessToken, 43200000);
+      this.cache.setWithTimeout(RedditAppAuthenticator.CacheKey, accessToken, 43200000); // Duration is 24hr, store in cache for half-life.
     }
 
     return accessToken;
+  }
+}
+class TokenCache {
+  private readonly cache: Map<string, { value: any; timeout: NodeJS.Timeout }> = new Map();
+
+  public setWithTimeout(key: string, value: any, timeout: number): void {
+    if (this.cache.has(key)) {
+      clearTimeout(this.cache.get(key).timeout);
+    }
+
+    const timeoutId = setTimeout(() => {
+      this.cache.delete(key);
+    }, timeout);
+
+    this.cache.set(key, { value, timeout: timeoutId });
+  }
+
+  public get(key: string): any {
+    const cachedValue = this.cache.get(key);
+    if (cachedValue) {
+      return cachedValue.value;
+    }
+
+    return undefined;
+  }
+
+  public delete(key: string): void {
+    if (this.cache.has(key)) {
+      clearTimeout(this.cache.get(key).timeout);
+      this.cache.delete(key);
+    }
   }
 }
 
