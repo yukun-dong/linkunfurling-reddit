@@ -10,6 +10,7 @@ go to https://www.reddit.com/prefs/apps/ and register a new app for Reddit using
 | about Url        | Url to your own about page |
 
 save client id and secret for future use.
+
 ![reddit](reddit.png)
 
 ### 2. update manifest
@@ -25,6 +26,7 @@ update link unfurling domain to
 ### 3. install package
 
 npm install adaptivecards-templating
+
 npm install axios
 
 ### 4. update env variables
