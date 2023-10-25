@@ -38,6 +38,18 @@ npm install axios
   ```
   SECRET_REDDIT_PASSWORD=<your reddit secret>
   ```
+- update teamsapp.local.yml to add these 2 vars into env while local debugging
+  ```yml
+  # Generate runtime environment variables
+  - uses: file/createOrUpdateEnvironmentFile
+    with:
+      target: ./.localConfigs
+      envs:
+        BOT_ID: ${{BOT_ID}}
+        BOT_PASSWORD: ${{SECRET_BOT_PASSWORD}}
+        REDDIT_ID: ${{REDDIT_ID}}
+        REDDIT_PASSWORD: ${{SECRET_REDDIT_PASSWORD}}
+  ```
 
 
 ### 5. update code
